@@ -19,17 +19,37 @@ export default function Home(): JSX.Element {
   } = useInfiniteQuery(
     'images',
     // TODO AXIOS REQUEST WITH PARAM
-    ,
+    async ({ pageParam = null }) => {
+      try {
+        const response = await api.get(`/api/images?cursor=${pageParam}`);
+        return response.data.data
+      } catch (err) {
+        console.log(err);
+      }
+    },
     // TODO GET AND RETURN NEXT PAGE PARAM
+    {
+      getNextPageParam: response => response?.after ?? null,
+    }
   );
 
   const formattedData = useMemo(() => {
     // TODO FORMAT AND FLAT DATA ARRAY
+    return data?.pages[0] ?? null
   }, [data]);
 
   // TODO RENDER LOADING SCREEN
-
+  if (isLoading) {
+    return (
+      <Loading />
+      )
+  }
   // TODO RENDER ERROR SCREEN
+  if (isError) {
+    return (
+      <Error />
+    )
+  }
 
   return (
     <>
