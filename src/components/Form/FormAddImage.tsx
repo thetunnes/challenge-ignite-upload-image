@@ -15,26 +15,39 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
   const [imageUrl, setImageUrl] = useState('');
   const [localImageUrl, setLocalImageUrl] = useState('');
   const toast = useToast();
+  let regex = (/image\/(gif|jpe?g|tiff?|png|webp|bmp)$/i);
 
   const formValidations = {
     image: {
       // TODO REQUIRED, LESS THAN 10 MB AND ACCEPTED FORMATS VALIDATIONS
-      lessThan10MB: (img) => img[0].size < 10000000 || 'O arquivo deve ser menor que 10MB',
-      // acceptedFormats: (img) => img[0].type.includes(regex) || 'Somente são aceitos arquivos PNG, JPEG e GIF'
+      required: 'Arquivo obrigatório',
+      lessThan10MB: (img: { size: number }) => img[0].size < 10000000 || 'O arquivo deve ser menor que 10MB',
+      acceptedFormats: (img: { type: string }) => regex.test(img[0].type) || 'Somente são aceitos arquivos PNG, JPEG e GIF'
     },
-    title: { required: true, minLength: 2, maxLength: 20 },
-    description: { required: true, maxLength: 65 },
+    title: {
+      required: 'Título obrigatório',
+      minLength: { value: 2, message: 'Mínimo de 2 caracteres' },
+      maxLength: { value: 20, message: 'Máximo de 20 caracteres' }
+    },
+    description: {
+      required: 'Descrição obrigatória',
+      maxLength: { value: 65, message: 'Máximo de 65 caracteres' }
+    },
   };
 
   const queryClient = useQueryClient();
   const mutation = useMutation(
     // TODO MUTATION API POST REQUEST,
-    async (formData) => {
-      console.log(formData)
-      const response = await api.post('/api/images', formData);
+    async (formData: Record<string, unknown>) => {
+      const response = await api.post('/api/images', {
+        title: formData.title,
+        description: formData.description,
+        url: imageUrl
+      });
     },
     {
       // TODO ONSUCCESS MUTATION
+      onSuccess: () => queryClient.invalidateQueries('images')
     }
   );
 
@@ -49,6 +62,9 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
   } = useForm();
   const { errors } = formState;
 
+  console.log(errors)
+  console.log(watch('image'))
+
   const onSubmit = async (data: Record<string, unknown>): Promise<void> => {
     try {
 
@@ -60,12 +76,12 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
         return
       }
 
-      data.url = imageUrl
-
-      mutation.mutateAsync(data, {onSuccess: toast({
-        title: 'Imagem cadastrada',
-        description: 'Sua imagem foi cadastrada com sucesso.'
-      })})
+      mutation.mutateAsync(data, {
+        onSuccess: toast({
+          title: 'Imagem cadastrada',
+          description: 'Sua imagem foi cadastrada com sucesso.'
+        })
+      })
       // TODO SHOW ERROR TOAST IF IMAGE URL DOES NOT EXISTS
       // TODO EXECUTE ASYNC MUTATION
       // TODO SHOW SUCCESS TOAST
@@ -84,7 +100,6 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
     }
   };
 
-  let regex = '[^\\s]+(\\.(?i)(jpe?g|png|gif|bmp))$';
 
   return (
     <Box as="form" width="100%" onSubmit={handleSubmit(onSubmit)}>
@@ -96,9 +111,7 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
           setLocalImageUrl={setLocalImageUrl}
           setError={setError}
           trigger={trigger}
-          {...register('image', {
-            required: true, validate: formValidations.image
-          })}
+          {...register('image', formValidations.image)}
           error={errors.image}
         // TODO SEND IMAGE ERRORS
         // TODO REGISTER IMAGE INPUT WITH VALIDATIONS
